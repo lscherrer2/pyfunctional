@@ -12,14 +12,14 @@ class Match[T, V]:
         self.cases: list[tuple[T | type[T], Callable[[T], V]]] = []
         self.default_case: Callable[[T], V] | None = None
 
-    def case(self, value: T | type[T], closure: Callable[[T], V], /) -> Match[T, V]:
-        self.cases.append((value, closure))
+    def case(self, value: T | type[T], fn: Callable[[T], V], /) -> Match[T, V]:
+        self.cases.append((value, fn))
         return self
 
-    def default(self, closure: Callable[[T], V], /) -> V:
+    def default(self, fn: Callable[[T], V], /) -> V:
         if self.default_case is not None:
             raise RuntimeError("Received multiple defaults")
-        self.default_case = closure
+        self.default_case = fn
         return self.evaluate()
 
     def evaluate(self) -> V:
