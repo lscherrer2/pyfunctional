@@ -1,0 +1,23 @@
+version = 1
+revision = 3
+requires-python = ">=3.13"
+
+[[package]]
+name = "iterutil"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/01/e82eb684f111bc1bb35838520e3aaa4c6a9d6d6a51be02814e5c0f570ba5/iterutil-0.1.2.tar.gz", hash = "sha256:4949109905b97fca84b743e3f59bc372e4c6b02eb0b8ed85fb79588dd5953047", size = 5071, upload-time = "2025-12-29T17:52:49.332Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/90/b5/4558ec0f743a8fe33b5e932fc4a7817c4cf38efdce9f1ba0e4cf110b5a33/iterutil-0.1.2-py3-none-any.whl", hash = "sha256:3385a7a6b5918d2b595d802d4e7fcba2e4d76067f24a1fe7fc77962cdf62b5ce", size = 4849, upload-time = "2025-12-29T17:52:48.399Z" },
+]
+
+[[package]]
+name = "pyfunctional"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "iterutil" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "iterutil", specifier = ">=0.1.2" }]
