@@ -1,49 +1,90 @@
 from __future__ import annotations
-from typing import Callable
+from typing import Callable, Any
+from typeguard import check_type, TypeCheckError
 from types import FunctionType
 
 
-def match[T, V](value: T) -> Match[T, V]:
-    return Match[T, V](value)
+def match_value[T, V](value: T) -> MatchValue[T, V]:
+    return MatchValue(value)
 
 
-class Match[T, V]:
-    def __init__(self, value: T):
+def match_type[T, V](value: T) -> MatchType[T, V]:
+    return MatchType(value)
+
+
+class MatchValue[T, V]:
+    def __init__(self, value: T, /):
         self.value: T = value
-        self.cases: list[tuple[T | type[T], Callable[[T], V] | V]] = []
+        self.cases: list[tuple[T, Callable[[T], V] | V]] = []
         self.default_case: Callable[[T], V] | V | None = None
 
-    def case(
-        self, value: T | type[T], fn_or_value: Callable[[T], V] | V, /
-    ) -> Match[T, V]:
+    def case(self, value: T, fn_or_value: Callable[[T], V] | V, /) -> MatchValue[T, V]:
         self.cases.append((value, fn_or_value))
         return self
 
-    def default(self, fn_or_value: Callable[[T], V] | V, /) -> V:
+    def default(self, fn_or_value: Callable[[T], V] | V, /) -> MatchValue[T, V]:
         if self.default_case is not None:
             raise RuntimeError("Received multiple defaults")
+
         self.default_case = fn_or_value
-        return self.evaluate()
+        return self
 
     def evaluate(self) -> V:
-        for v, f in self.cases:
-            if self.value == v:
-                if isinstance(f, FunctionType):
-                    return f(self.value)
-                else:
-                    return f
+        for value, fn_or_value in self.cases:
+            if self.value == value:
+                if isinstance(fn_or_value, FunctionType):
+                    return fn_or_value(self.value)
 
-        for v, f in self.cases:
-            if type(self.value) is v:
-                if isinstance(f, FunctionType):
-                    return f(self.value)
-                else:
-                    return f
+                return fn_or_value
 
-        if f := self.default_case:
-            if isinstance(f, FunctionType):
-                return f(self.value)
-            else:
-                return f
+        if fn_or_value := self.default_case:
+            if isinstance(fn_or_value, FunctionType):
+                return fn_or_value(self.value)
+
+            return fn_or_value
+
+        raise ValueError("No Matching Arm")
+
+
+def _is_type(value: Any, annotation: type):
+    try:
+        check_type(value, annotation)
+        return True
+    except TypeCheckError:
+        return False
+
+
+class MatchType[T, V]:
+    def __init__(self, value: T):
+        self.value: T = value
+        self.cases: list[tuple[type, Callable[[T], V] | V]] = []
+        self.default_case: Callable[[T], V] | V | None = None
+
+    def case(
+        self, annotation: type, fn_or_value: Callable[[T], V] | V, /
+    ) -> MatchType[T, V]:
+        self.cases.append((annotation, fn_or_value))
+        return self
+
+    def default(self, fn_or_value: Callable[[T], V] | V, /) -> MatchType[T, V]:
+        if self.default_case is not None:
+            raise RuntimeError("Received multiple defaults")
+
+        self.default_case = fn_or_value
+        return self
+
+    def evaluate(self) -> V:
+        for annotation, fn_or_value in self.cases:
+            if _is_type(self.value, annotation):
+                if isinstance(fn_or_value, FunctionType):
+                    return fn_or_value(self.value)
+
+                return fn_or_value
+
+        if fn_or_value := self.default_case:
+            if isinstance(fn_or_value, FunctionType):
+                return fn_or_value(self.value)
+
+            return fn_or_value
 
         raise ValueError("No Matching Arm")

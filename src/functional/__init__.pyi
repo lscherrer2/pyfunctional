@@ -1,7 +1,8 @@
 from __future__ import annotations
-from functional.iterator import iterate, Iterator
-from functional.match import match_type, match_value, MatchValue, MatchType
-from functional.if_ import if_, If
+
+from functional.if_ import If, if_
+from functional.iterator import Iterator, iterate
+from functional.match import MatchType, MatchValue, match_type, match_value
 from functional.expr import expr, Expr
 
 __all__ = [

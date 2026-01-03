@@ -77,6 +77,21 @@ class TestIterator(TestCase):
         total = iterate([]).fold(lambda acc, x: acc + x, 123)
         self.assertEqual(total, 123)
 
+    def test_sum_min_max(self):
+        self.assertEqual(self.iterator.sum(), sum(self.inner))
+        self.assertEqual(self.iterator.min(), min(self.inner))
+        self.assertEqual(self.iterator.max(), max(self.inner))
+
+    def test_reduce(self):
+        total = self.iterator.reduce(lambda acc, x: acc + x)
+        self.assertEqual(total, sum(self.inner))
+
+        total = self.iterator.reduce(lambda acc, x: acc + x, 10)
+        self.assertEqual(total, sum(self.inner) + 10)
+
+        with self.assertRaises(TypeError):
+            _ = iterate([]).reduce(lambda acc, x: acc + x)
+
     def test_slice_getitem(self):
         product = list(self.iterator[1:6:2])
         self.assertEqual(product, [2, 4, 6])

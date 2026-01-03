@@ -1,9 +1,9 @@
 from __future__ import annotations
-from typing import Callable, Any
-from collections.abc import Iterable
+from typing import Iterable, Callable, Any
+from typing import overload
 from itertools import chain, filterfalse, islice
 from functools import reduce
-import collections.abc
+import typing
 
 __all__ = [
     "Iterator",
@@ -12,14 +12,14 @@ __all__ = [
 
 
 def iterate[T](iterable: Iterable[T], /) -> Iterator[T]:
-    return Iterator[T](iterable)
+    return Iterator(iterable)
 
 
 class Iterator[T]:
     def __init__(self, inner: Iterable[T]):
         self.inner: Iterable[T] = inner
 
-    def __iter__(self) -> collections.abc.Iterator[T]:
+    def __iter__(self) -> typing.Iterator[T]:
         return iter(self.inner)
 
     def filter(self, fn: Callable[[T], bool]) -> Iterator[T]:
@@ -83,10 +83,16 @@ class Iterator[T]:
     def fold[U](self, fn: Callable[[U, T], U], initial: U) -> U:
         return reduce(fn, self, initial) if initial is not None else reduce(fn, self)
 
-    def reduce[U](self, fn: Callable[[U, T], T], initial: U | None = None):
+    @overload
+    def reduce(self, fn: Callable[[T, T], T], initial: None = None) -> T: ...
+
+    @overload
+    def reduce[U](self, fn: Callable[[U, T], U], initial: U) -> U: ...
+
+    def reduce(self, fn, initial=None):
         return reduce(fn, self, initial) if initial is not None else reduce(fn, self)
 
-    def __getitem__(self, i: slice) -> Iterable[T]:
+    def __getitem__(self, i: slice) -> Iterator[T]:
         if not isinstance(i, slice):
             raise TypeError("Iterator.__getitem__ can only receive a slice object")
         return self._wrap(islice(self, i.start, i.stop, i.step))

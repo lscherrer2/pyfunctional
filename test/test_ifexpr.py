@@ -9,3 +9,7 @@ class TestIfexpr(TestCase):
 
         res: int = if_(False).then(lambda: 1).else_(lambda: 2)
         self.assertEqual(res, 2)
+
+    def test_else_without_then_raises(self):
+        with self.assertRaises(RuntimeError):
+            _ = if_(True).else_(lambda: 1)
