@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Callable
 
-from functional.if_ import If
-from functional.iterator import Iterator
-from functional.match import MatchType, MatchValue
+from fnutil.if_ import If
+from fnutil.iterator import Iterator
+from fnutil.match import MatchType, MatchValue
 
 __all__ = [
     "expr",

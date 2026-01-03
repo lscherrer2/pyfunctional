@@ -1,4 +1,4 @@
-## Functional
+## FnUtil
 
 Lightweight functional-style helpers for Python 3.13+.
 
@@ -11,7 +11,7 @@ This package focuses on a small set of composable building blocks:
 All examples in this README use:
 
 ```py
-import functional as fn
+import fnutil as fn
 ```
 
 ## `expr` and chaining
@@ -19,7 +19,7 @@ import functional as fn
 `fn.expr(x)` wraps a value and keeps it in `.value`.
 
 ```py
-import functional as fn
+import fnutil as fn
 
 assert fn.expr(2).map_value(lambda x: x + 1).value == 3
 ```
@@ -29,7 +29,7 @@ assert fn.expr(2).map_value(lambda x: x + 1).value == 3
 `try_map_value` catches exceptions and stores them as the wrapped value; `catch` can then recover.
 
 ```py
-import functional as fn
+import fnutil as fn
 
 result = (
 	fn.expr(0)
@@ -45,7 +45,7 @@ assert result.value == 0
 `Expr.if_` uses truthiness of the wrapped value.
 
 ```py
-import functional as fn
+import fnutil as fn
 
 assert fn.expr(True).if_(lambda: "yes").else_(lambda: "no") == "yes"
 assert fn.expr(0).if_(lambda: "yes").else_(lambda: "no") == "no"
@@ -61,7 +61,7 @@ Matching is a two-step process:
 ### Match by value
 
 ```py
-import functional as fn
+import fnutil as fn
 
 out = (
 	fn.expr("b")
@@ -78,7 +78,7 @@ assert out == "B"
 ### Match by type
 
 ```py
-import functional as fn
+import fnutil as fn
 
 out = (
 	fn.expr(8)
@@ -97,7 +97,7 @@ In Python, `bool` is a subclass of `int`, so type matching follows the *order of
 If you put `int` first, `True`/`False` will match the `int` arm (this is intended behavior).
 
 ```py
-import functional as fn
+import fnutil as fn
 
 assert (
 	fn.expr(True)
@@ -123,7 +123,7 @@ assert (
 When you start from an `expr`, you can go directly into iterator mode via `.iterate()`.
 
 ```py
-import functional as fn
+import fnutil as fn
 
 xs = fn.expr([1, 2, 3, 4]).iterate()
 

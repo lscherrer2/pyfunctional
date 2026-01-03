@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-import functional as fn
+import fnutil as fn
 
 
 class TestIterator(TestCase):

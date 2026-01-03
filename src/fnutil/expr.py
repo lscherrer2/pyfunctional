@@ -1,8 +1,8 @@
 from __future__ import annotations
 from collections.abc import Iterable
-from functional.iterator import iterate, Iterator
-from functional.match import match_type, match_value, MatchValue, MatchType
-from functional.if_ import if_, If
+from fnutil.iterator import iterate, Iterator
+from fnutil.match import match_type, match_value, MatchValue, MatchType
+from fnutil.if_ import if_, If
 from typing import Callable
 
 

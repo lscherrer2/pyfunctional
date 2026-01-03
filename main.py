@@ -1,4 +1,4 @@
-from functional import expr
+from fnutil import expr
 
 res = (
     expr(False).match_type().case(int, lambda x: int).default(lambda x: None).evaluate()

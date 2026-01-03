@@ -3,11 +3,24 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta" 
 
 [project]
-name = "pyfunctional"
-version = "0.1.0"
-description = "Add your description here"
+name = "fnutil"
+version = "0.0.1"
+description = "Lightweight functional-style helpers for Python 3.13+"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "typeguard>=4.4.4",
 ]
+authors = [
+  { name="Luke Scherrer", email="lscherrer2@gmail.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/lscherrer2/fnutil"
+Issues = "https://github.com/lscherrer2/fnutil/issues"
