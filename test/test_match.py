@@ -64,3 +64,21 @@ class TestMatch(TestCase):
             .default(lambda _: bool)
         )
         self.assertIs(res, bool)
+
+    def test_guard(self):
+        res = (
+            match(True)
+            .case(float, "float")
+            .case(int, "int")
+            .case(bool, "bool")
+            .default("Not sure")
+        )
+        self.assertEqual(res, "bool")
+        res = (
+            match(lambda: None)
+            .case(float, "float")
+            .case(int, "int")
+            .case(bool, "bool")
+            .default("Not sure")
+        )
+        self.assertEqual(res, "Not sure")
