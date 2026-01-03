@@ -1,11 +1,12 @@
 from unittest import TestCase
-from functional import expr
+
+import functional as fn
 
 
 class TestMatch(TestCase):
     def test_match_type(self):
         res = (
-            expr(False)
+            fn.expr(False)
             .match_type()
             .case(int, lambda x: "int")
             .default(lambda x: None)
@@ -14,7 +15,7 @@ class TestMatch(TestCase):
         self.assertEqual(res, "int")
 
         res = (
-            expr(8)
+            fn.expr(8)
             .match_type()
             .case(bool, lambda x: "bool")
             .case(int | float, lambda x: "number")
@@ -25,7 +26,7 @@ class TestMatch(TestCase):
 
     def test_match_type_bool_is_caught_by_int_if_int_case_first(self):
         res = (
-            expr(True)
+            fn.expr(True)
             .match_type()
             .case(int, "int")
             .case(bool, "bool")
@@ -35,7 +36,7 @@ class TestMatch(TestCase):
         self.assertEqual(res, "int")
 
         res = (
-            expr(True)
+            fn.expr(True)
             .match_type()
             .case(bool, "bool")
             .case(int, "int")
@@ -46,14 +47,14 @@ class TestMatch(TestCase):
 
     def test_match_type_errors(self):
         with self.assertRaises(RuntimeError):
-            expr(1).match_type().default("a").default("b")
+            fn.expr(1).match_type().default("a").default("b")
 
         with self.assertRaises(ValueError):
-            expr("x").match_type().case(int, "int").evaluate()
+            fn.expr("x").match_type().case(int, "int").evaluate()
 
     def test_match_value(self):
         res = (
-            expr(False)
+            fn.expr(False)
             .match_value()
             .case(True, lambda x: "true")
             .case(False, lambda x: "false")
@@ -63,7 +64,7 @@ class TestMatch(TestCase):
         self.assertEqual(res, "false")
 
         res = (
-            expr(8)
+            fn.expr(8)
             .match_value()
             .case(True, lambda x: "true")
             .case(False, lambda x: "false")
@@ -73,7 +74,7 @@ class TestMatch(TestCase):
         self.assertEqual(res, "default")
 
         res = (
-            expr(8)
+            fn.expr(8)
             .match_value()
             .case(True, lambda x: "true")
             .case(8, lambda x: "number")
@@ -83,11 +84,11 @@ class TestMatch(TestCase):
         self.assertEqual(res, "number")
 
     def test_match_value_errors_and_constants(self):
-        res = expr(1).match_value().case(1, "one").default("default").evaluate()
+        res = fn.expr(1).match_value().case(1, "one").default("default").evaluate()
         self.assertEqual(res, "one")
 
         with self.assertRaises(RuntimeError):
-            expr(1).match_value().default("a").default("b")
+            fn.expr(1).match_value().default("a").default("b")
 
         with self.assertRaises(ValueError):
-            expr(1).match_value().case(2, "two").evaluate()
+            fn.expr(1).match_value().case(2, "two").evaluate()

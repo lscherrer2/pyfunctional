@@ -1,11 +1,12 @@
 from unittest import TestCase
-from functional import iterate
+
+import functional as fn
 
 
 class TestIterator(TestCase):
     def setUp(self):
         self.inner = [1, 2, 3, 4, 5, 6, 7]
-        self.iterator = iterate(self.inner)
+        self.iterator = fn.iterate(self.inner)
 
     def test_passthrough(self):
         assert self.inner is self.iterator.inner
@@ -54,19 +55,19 @@ class TestIterator(TestCase):
         self.assertEqual(product, [2, 4, 6])
 
     def test_chain(self):
-        product = list(iterate([1, 2]).chain([3, 4], [5]))
+        product = list(fn.iterate([1, 2]).chain([3, 4], [5]))
         self.assertEqual(product, [1, 2, 3, 4, 5])
 
     def test_enumerate(self):
-        product = list(iterate(["a", "b", "c"]).enumerate())
+        product = list(fn.iterate(["a", "b", "c"]).enumerate())
         self.assertEqual(product, [(0, "a"), (1, "b"), (2, "c")])
 
     def test_zip(self):
-        product = list(iterate([1, 2, 3]).zip(["a", "b"]))
+        product = list(fn.iterate([1, 2, 3]).zip(["a", "b"]))
         self.assertEqual(product, [(1, "a"), (2, "b")])
 
     def test_flatten(self):
-        product = list(iterate([[1, 2], [], [3], [4, 5]]).flatten())
+        product = list(fn.iterate([[1, 2], [], [3], [4, 5]]).flatten())
         self.assertEqual(product, [1, 2, 3, 4, 5])
 
     def test_fold_sum(self):
@@ -74,7 +75,7 @@ class TestIterator(TestCase):
         self.assertEqual(total, sum(self.inner))
 
     def test_fold_empty_returns_init(self):
-        total = iterate([]).fold(lambda acc, x: acc + x, 123)
+        total = fn.iterate([]).fold(lambda acc, x: acc + x, 123)
         self.assertEqual(total, 123)
 
     def test_sum_min_max(self):
@@ -90,7 +91,7 @@ class TestIterator(TestCase):
         self.assertEqual(total, sum(self.inner) + 10)
 
         with self.assertRaises(TypeError):
-            _ = iterate([]).reduce(lambda acc, x: acc + x)
+            _ = fn.iterate([]).reduce(lambda acc, x: acc + x)
 
     def test_slice_getitem(self):
         product = list(self.iterator[1:6:2])
