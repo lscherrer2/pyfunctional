@@ -42,11 +42,15 @@ class TestIterator(TestCase):
 
     def test_filter_map(self):
         target = [2, 6, 10, 14]
-        product = list(self.iterator.filter_map(lambda x: x * 2 if x % 2 else None))
+        product = list(
+            self.iterator.filter_map(lambda x: x * 2 if x % 2 else None)
+        )
         self.assertEqual(target, product)
 
     def test_collect(self):
-        collected: list = self.iterator.filter(lambda x: bool(x % 2)).collect(list)
+        collected: list = self.iterator.filter(lambda x: bool(x % 2)).collect(
+            list
+        )
         self.assertEqual(collected, [1, 3, 5, 7])
 
     def test_filterfalse(self):

@@ -1,14 +1,21 @@
 from __future__ import annotations
+
 from typing import Callable
 
-__all__ = [
-    "If",
-    "if_",
-]
+from fnutil.expr import Expr
 
-def if_[T](condition: bool, /) -> If[T]: ...
-
-class If[T]:
-    def __init__(self, condition: bool, /): ...
-    def then(self, fn: Callable[[], T], /) -> If[T]: ...
-    def else_(self, fn: Callable[[], T], /) -> T: ...
+class _If[T]:
+    def then(
+        self, fn_or_val: Callable[[], T] | T, /, *, call: bool = False
+    ) -> _If[T]: ...
+    def elif_(
+        self,
+        condition: bool,
+        fn_or_val: Callable[[], T] | T,
+        /,
+        *,
+        call: bool = False,
+    ) -> _If[T]: ...
+    def else_(
+        self, fn_or_val: Callable[[], T] | T, /, *, call: bool = False
+    ) -> Expr[T]: ...

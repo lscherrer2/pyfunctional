@@ -4,25 +4,66 @@ import fnutil as fn
 
 
 class TestExpr(TestCase):
-    def test_map_value(self):
-        self.assertEqual(fn.expr(2).map_value(lambda x: x + 1).value, 3)
+    def test_map(self):
+        result = fn.expr(2).map(lambda x: x + 1)
+        self.assertEqual(result.val, 3)
 
-    def test_try_map_value_success(self):
-        out = fn.expr(2).try_map_value(lambda x: x * 2)
-        self.assertEqual(out.value, 4)
+    def test_map_chains(self):
+        result = fn.expr(5).map(lambda x: x * 2).map(lambda x: x + 1)
+        self.assertEqual(result.val, 11)
 
-    def test_try_map_value_exception_and_catch(self):
-        out = fn.expr(0).try_map_value(lambda x: 1 // x)
-        self.assertIsInstance(out.value, Exception)
+    def test_map_catches_exceptions(self):
+        result = fn.expr(0).map(lambda x: 1 // x)
+        self.assertTrue(result.is_err)
+        self.assertIsInstance(result.err, ZeroDivisionError)
 
-        recovered = out.catch(ZeroDivisionError, lambda e: "recovered")
-        self.assertEqual(recovered.value, "recovered")
+    def test_map_err(self):
+        result = (
+            fn.expr(0).map(lambda x: 1 // x).map_err(lambda e: "recovered")
+        )
+        self.assertEqual(result.val, "recovered")
 
-    def test_if_iterate(self):
-        res = fn.expr(True).if_(lambda: 1).else_(lambda: 2)
-        self.assertEqual(res, 1)
+    def test_unwrap_success(self):
+        result = fn.expr(42).unwrap()
+        self.assertEqual(result, 42)
 
-        res = fn.expr(0).if_(lambda: 1).else_(lambda: 2)
-        self.assertEqual(res, 2)
+    def test_unwrap_raises(self):
+        with self.assertRaises(ValueError):
+            fn.expr(1).map(
+                lambda x: (_ for _ in ()).throw(ValueError("test"))
+            ).unwrap()
 
-        self.assertEqual(list(fn.expr([1, 2, 3]).iterate()), [1, 2, 3])
+    def test_if_then_else(self):
+        result = fn.expr(True).if_().then(100).else_(200)
+        self.assertEqual(result.val, 100)
+
+        result = fn.expr(False).if_().then(100).else_(200)
+        self.assertEqual(result.val, 200)
+
+    def test_if_with_functions(self):
+        result = fn.expr(True).if_().then(lambda: "yes").else_(lambda: "no")
+        self.assertEqual(result.val, "yes")
+
+        result = fn.expr(0).if_().then(lambda: "yes").else_(lambda: "no")
+        self.assertEqual(result.val, "no")
+
+    def test_match(self):
+        result = fn.expr(42).match().case(int, "number").evaluate()
+        self.assertEqual(result.val, "number")
+
+    def test_match_with_lambda(self):
+        result = fn.expr(5).match().case(int, lambda x: x * 2).evaluate()
+        self.assertEqual(result.val, 10)
+
+    def test_chaining(self):
+        result = (
+            fn.expr(5)
+            .map(lambda x: x * 2)
+            .match()
+            .case(10, "ten")
+            .evaluate()
+            .if_()
+            .then("success")
+            .else_("failed")
+        )
+        self.assertEqual(result.val, "success")

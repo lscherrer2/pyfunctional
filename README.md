@@ -2,145 +2,186 @@
 
 Lightweight functional-style helpers for Python 3.13+.
 
-This package focuses on a small set of composable building blocks:
+When you use `fnutil`, you commit to **functional-style programming** - everything stays within the `Expr` monad until you explicitly unwrap.
 
-- `expr(...)`: an expression wrapper that enables chaining.
-- `match_value(...)` / `match_type(...)`: fluent “match” builders.
-- `iterate(...)`: a lazy iterator wrapper with common helpers.
+## Installation
 
-All examples in this README use:
+```bash
+pip install fnutil
+```
+
+Or with uv:
+
+```bash
+uv add fnutil
+```
+
+## Usage
+
+All examples use:
 
 ```py
 import fnutil as fn
 ```
 
-## `expr` and chaining
+## The `Expr` Monad
 
-`fn.expr(x)` wraps a value and keeps it in `.value`.
+`fn.expr(x)` wraps a value in the `Expr` monad. Access the wrapped value with `.val` or `.unwrap()`.
 
 ```py
-import fnutil as fn
-
-assert fn.expr(2).map_value(lambda x: x + 1).value == 3
+result = fn.expr(2).map(lambda x: x + 1)
+assert result.val == 3
 ```
 
-### Safe mapping + recovery
+### Core Expr Methods
 
-`try_map_value` catches exceptions and stores them as the wrapped value; `catch` can then recover.
+- `.map(fn)` - Transform the value (catches exceptions)
+- `.map_err(fn)` - Transform an error
+- `.unwrap()` - Extract value or raise exception
+- `.val` - Get value or `None`
+- `.err` - Get exception or `None`
+- `.is_val` / `.is_err` - Check state
+
+## Pattern Matching
+
+`.match()` provides unified pattern matching for both types and values:
 
 ```py
-import fnutil as fn
+result = (
+    fn.expr(42)
+    .match()
+    .case(int, lambda x: x * 2)
+    .case(str, lambda x: len(x))
+    .default("unknown")
+    .evaluate()
+)
+
+assert result.val == 84
+```
+
+### Value Matching
+
+```py
+result = (
+    fn.expr("hello")
+    .match()
+    .case("hello", "matched!")
+    .case("world", "not this")
+    .default("nope")
+    .evaluate()
+)
+
+assert result.val == "matched!"
+```
+
+### Direct Values (No Lambdas Needed)
+
+```py
+result = (
+    fn.expr(5)
+    .match()
+    .case(int, "is a number")
+    .default("not a number")
+    .evaluate()
+)
+
+assert result.val == "is a number"
+```
+
+### Callable Objects with `call=True`
+
+By default, only functions/lambdas are called. Use `call=True` to call other callables:
+
+```py
+class MyCallable:
+    def __call__(self, x):
+        return x * 10
 
 result = (
-	fn.expr(0)
-	.try_map_value(lambda x: 10 // x)
-	.catch(ZeroDivisionError, lambda e: 0)
+    fn.expr(5)
+    .match()
+    .case(int, MyCallable(), call=True)
+    .evaluate()
 )
 
-assert result.value == 0
+assert result.val == 50
 ```
 
-### Conditional expressions
+## Conditional Expressions
 
-`Expr.if_` uses truthiness of the wrapped value.
+`.if_()` uses the truthiness of the wrapped value:
 
 ```py
-import fnutil as fn
+result = fn.expr(True).if_().then(100).else_(200)
+assert result.val == 100
 
-assert fn.expr(True).if_(lambda: "yes").else_(lambda: "no") == "yes"
-assert fn.expr(0).if_(lambda: "yes").else_(lambda: "no") == "no"
+result = fn.expr(0).if_().then(100).else_(200)
+assert result.val == 200
 ```
 
-## Matching
-
-Matching is a two-step process:
-
-1. Build cases with `.case(...)` (and optionally `.default(...)`)
-2. Call `.evaluate()`
-
-### Match by value
+### With Functions
 
 ```py
-import fnutil as fn
+result = fn.expr(True).if_().then(lambda: "yes").else_(lambda: "no")
+assert result.val == "yes"
+```
 
-out = (
-	fn.expr("b")
-	.match_value()
-	.case("a", "A")
-	.case("b", "B")
-	.default("?")
-	.evaluate()
+### With elif_
+
+```py
+result = (
+    fn.expr(5)
+    .if_()
+    .then("small")
+    .elif_(lambda: result.val > 10, "medium")
+    .else_("tiny")
+)
+```
+
+## Chaining Example
+
+Everything chains through `Expr`:
+
+```py
+result = (
+    fn.expr(5)
+    .map(lambda x: x * 2)
+    .match()
+    .case(10, "ten")
+    .case(int, lambda x: f"number: {x}")
+    .evaluate()
+    .if_()
+    .then(lambda: "success")
+    .else_(lambda: "failed")
 )
 
-assert out == "B"
+assert result.val == "success"
 ```
 
-### Match by type
+## Iterator Utilities
+
+`Iterator[T]` provides lazy operations:
 
 ```py
-import fnutil as fn
-
-out = (
-	fn.expr(8)
-	.match_type()
-	.case(int | float, "number")
-	.default("other")
-	.evaluate()
+result = (
+    fn.expr([1, 2, 3, 4])
+    .map(lambda xs: fn.iterate(xs))
+    .map(lambda it: it.filter(lambda x: x % 2 == 0))
+    .map(lambda it: list(it))
 )
 
-assert out == "number"
+assert result.val == [2, 4]
 ```
 
-#### Note on `bool` vs `int`
+Common methods: `map`, `filter`, `filterfalse`, `collect`, `chain`, `zip`, `enumerate`, 
+`fold`, `reduce`, `flatten`, `sum`, `min`, `max`, and slicing via `[start:stop:step]`.
 
-In Python, `bool` is a subclass of `int`, so type matching follows the *order of cases*.
-If you put `int` first, `True`/`False` will match the `int` arm (this is intended behavior).
+## Philosophy
 
-```py
-import fnutil as fn
+**Stay in the monad.** FnUtil encourages you to:
 
-assert (
-	fn.expr(True)
-	.match_type()
-	.case(int, "int")
-	.case(bool, "bool")
-	.evaluate()
-) == "int"
+1. Start with `fn.expr(value)`
+2. Chain operations (`.map`, `.match`, `.if_`)
+3. Only unwrap at the end with `.val` or `.unwrap()`
 
-assert (
-	fn.expr(True)
-	.match_type()
-	.case(bool, "bool")
-	.case(int, "int")
-	.evaluate()
-) == "bool"
-```
-
-## Iterator utilities
-
-`Iterator[T]` is a lazy wrapper: operations like `map` and `filter` create new iterators.
-
-When you start from an `expr`, you can go directly into iterator mode via `.iterate()`.
-
-```py
-import fnutil as fn
-
-xs = fn.expr([1, 2, 3, 4]).iterate()
-
-evens = xs.filterfalse(lambda x: x % 2)
-assert list(evens) == [2, 4]
-
-doubled = fn.expr([1, 2, 3]).iterate().map(lambda x: x * 2)
-assert list(doubled) == [2, 4, 6]
-
-flat = fn.expr([[1, 2], [], [3]]).iterate().flatten()
-assert list(flat) == [1, 2, 3]
-```
-
-Common convenience methods include: `collect`, `chain`, `zip`, `enumerate`, `fold`, `reduce`,
-`sum`, `min`, `max`, and slicing via `it[start:stop:step]`.
-
-## Direct usage (not recommended)
-
-You *can* use the lower-level helpers directly (e.g. `fn.if_`, `fn.iterate`, `fn.match_type`,
-`fn.match_value`) but the intended usage is to start from `fn.expr(...)` and chain from there.
+This ensures consistent error handling and makes your code more composable.

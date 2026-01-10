@@ -1,29 +1,19 @@
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
-__all__ = [
-    "MatchValue",
-    "MatchType",
-    "match_value",
-    "match_type",
-]
+from fnutil.expr import Expr
 
-def match_value[T, V](value: T) -> MatchValue[T, V]: ...
-def match_type[T, V](value: T) -> MatchType[T, V]: ...
-
-class MatchValue[T, V]:
-    def __init__(self, value: T, /): ...
+class _Match[T, V]:
     def case(
-        self, value: T, fn_or_value: Callable[[T], V] | V, /
-    ) -> MatchValue[T, V]: ...
-    def default(self, fn_or_value: Callable[[T], V] | V, /) -> MatchValue[T, V]: ...
-    def evaluate(self) -> V: ...
-
-class MatchType[T, V]:
-    def __init__(self, value: T): ...
-    def case(
-        self, annotation: type, fn_or_value: Callable[[T], V] | V, /
-    ) -> MatchType[T, V]: ...
-    def default(self, fn_or_value: Callable[[T], V] | V, /) -> MatchType[T, V]: ...
-    def evaluate(self) -> V: ...
+        self,
+        cmp: Any,
+        fn_or_val: Callable[[T], V] | V,
+        /,
+        *,
+        call: bool = False,
+    ) -> _Match[T, V]: ...
+    def default(
+        self, fn_or_val: Callable[[T], V] | V, /, *, call: bool = False
+    ) -> _Match[T, V]: ...
+    def evaluate(self) -> Expr[V]: ...

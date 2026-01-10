@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fnutil"
-version = "0.0.1"
+version = "0.0.2"
 description = "Lightweight functional-style helpers for Python 3.13+"
 readme = "README.md"
 requires-python = ">=3.13"

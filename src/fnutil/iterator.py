@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import Iterable, Callable, Any
-from typing import overload
-from itertools import chain, filterfalse, islice
+
 from functools import reduce
+from itertools import chain, filterfalse, islice
 import typing
+from typing import Any, Callable, Iterable, overload
+
 
 __all__ = [
     "Iterator",
@@ -81,7 +82,11 @@ class Iterator[T]:
         return max(self)
 
     def fold[U](self, fn: Callable[[U, T], U], initial: U) -> U:
-        return reduce(fn, self, initial) if initial is not None else reduce(fn, self)
+        return (
+            reduce(fn, self, initial)
+            if initial is not None
+            else reduce(fn, self)
+        )
 
     @overload
     def reduce(self, fn: Callable[[T, T], T], initial: None = None) -> T: ...
@@ -90,11 +95,17 @@ class Iterator[T]:
     def reduce[U](self, fn: Callable[[U, T], U], initial: U) -> U: ...
 
     def reduce(self, fn, initial=None):
-        return reduce(fn, self, initial) if initial is not None else reduce(fn, self)
+        return (
+            reduce(fn, self, initial)
+            if initial is not None
+            else reduce(fn, self)
+        )
 
     def __getitem__(self, i: slice) -> Iterator[T]:
         if not isinstance(i, slice):
-            raise TypeError("Iterator.__getitem__ can only receive a slice object")
+            raise TypeError(
+                "Iterator.__getitem__ can only receive a slice object"
+            )
         return self._wrap(islice(self, i.start, i.stop, i.step))
 
     @classmethod

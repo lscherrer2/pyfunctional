@@ -1,28 +1,70 @@
 from __future__ import annotations
-from typing import Callable
+
+from types import FunctionType
+from typing import TYPE_CHECKING, Callable, cast
+
+from fnutil.base import _ExprChainable
 
 
-class If[T]:
+if TYPE_CHECKING:
+    from fnutil import Expr
+
+
+class _If[T](_ExprChainable):
     def __init__(self, condition: bool, /) -> None:
-        self.result: T
-        self.then_fn: Callable[[], T] | None = None
-        self.condition: bool = condition
+        super().__init__()
 
-    def then(self, fn: Callable[[], T], /) -> If[T]:
-        self.then_fn = fn
+        self.main_condition: bool = condition
+        self.conditions: list[tuple[bool, T | Callable[[], T], bool]] = []
+        self.then_init: bool = False
+
+    def then(
+        self, fn_or_val: T | Callable[[], T], /, *, call: bool = False
+    ) -> _If[T]:
+        if self.then_init:
+            raise RuntimeError("Then branch declared more than once.")
+
+        self.conditions.append((self.main_condition, fn_or_val, call))
+        self.then_init = True
+
         return self
 
-    def else_(self, fn: Callable[[], T], /) -> T:
-        if self.then_fn is None:
+    def elif_(
+        self,
+        condition: bool,
+        fn_or_val: T | Callable[[], T],
+        /,
+        *,
+        call: bool = False,
+    ) -> _If[T]:
+        if not self.then_init:
+            raise RuntimeError("Declared elif branch before then branch.")
+
+        self.conditions.append((condition, fn_or_val, call))
+        return self
+
+    def else_(
+        self, fn_or_val: T | Callable[[], T], /, *, call: bool = False
+    ) -> Expr[T]:
+        if not self.then_init:
             raise RuntimeError("Missing then() before else_()")
-        if self.condition:
-            return self.then_fn()
 
-        return fn()
+        self.conditions.append((True, fn_or_val, call))
 
+        try:
+            for condition, value, should_call in self.conditions:
+                if not condition:
+                    continue
 
-def if_[T](condition: bool, /) -> If[T]:
-    return If[T](condition)
+                if isinstance(value, FunctionType):
+                    fn = cast(Callable[[], T], value)
+                    return self._make_expr(val=fn())
+                if should_call and callable(value):
+                    fn = cast(Callable[[], T], value)
+                    return self._make_expr(val=fn())
+                return self._make_expr(val=cast(T, value))
 
+            raise RuntimeError("No condition matched (should not happen)")
 
-__all__ = ["if_"]
+        except Exception as e:
+            return self._make_expr(err=e)

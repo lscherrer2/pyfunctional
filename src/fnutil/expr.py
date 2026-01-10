@@ -1,43 +1,96 @@
 from __future__ import annotations
-from collections.abc import Iterable
-from fnutil.iterator import iterate, Iterator
-from fnutil.match import match_type, match_value, MatchValue, MatchType
-from fnutil.if_ import if_, If
-from typing import Callable
+
+from typing import TYPE_CHECKING, Callable, cast, overload
+
+if TYPE_CHECKING:
+    from fnutil.match import _Match
+    from fnutil.if_ import _If
 
 
 class Expr[T]:
-    def __init__(self, value: T, /, err: bool = False):
-        self.value: T = value
-        self.err: bool = err
+    @overload
+    def __init__(self, *, val: T) -> None: ...
 
-    def match_type[V](self) -> MatchType[T, V]:
-        return match_type(self.value)
+    @overload
+    def __init__(self, *, err: Exception) -> None: ...
 
-    def match_value[V](self) -> MatchValue[T, V]:
-        return match_value(self.value)
+    def __init__(self, *, val: T | None = None, err: Exception | None = None):
+        if val is not None and err is not None:
+            raise ValueError("Cannot provide both 'val' and 'err'")
+        if val is None and err is None:
+            raise ValueError("Must provide either 'val' or 'err'")
 
-    def if_[V](self, fn: Callable[[], V]) -> If[V]:
-        return if_(bool(self.value)).then(fn)
+        self._is_err = err is not None
+        if self._is_err:
+            self.inner: T | Exception = cast(Exception, err)
+        else:
+            self.inner = cast(T, val)
 
-    def iterate[U](self: Expr[Iterable[U]]) -> Iterator[U]:
-        return iterate(self.value)
+    @property
+    def is_err(self) -> bool:
+        return self._is_err
 
-    def map_value[V](self, fn: Callable[[T], V]) -> Expr[V]:
-        return Expr(fn(self.value))
+    @property
+    def is_val(self) -> bool:
+        return not self._is_err
 
-    def try_map_value[V](self, fn: Callable[[T], V]) -> Expr[V | Exception]:
+    @property
+    def err(self) -> Exception | None:
+        if self._is_err:
+            return cast(Exception, self.inner)
+        return None
+
+    @property
+    def val(self) -> T | None:
+        if not self._is_err:
+            return cast(T, self.inner)
+        return None
+
+    def unwrap(self) -> T:
+        if self._is_err:
+            raise cast(Exception, self.inner)
+        return cast(T, self.inner)
+
+    def map[V](self, fn: Callable[[T], V]) -> Expr[V]:
+        if self._is_err:
+            return Expr(err=cast(Exception, self.inner))
+
         try:
-            return Expr(fn(self.value))
+            return Expr(val=fn(cast(T, self.inner)))
         except Exception as e:
-            return Expr(e, err=True)
+            return Expr(err=e)
 
-    def catch[E, V](self, exception: type[E], fn: Callable[[E], V]) -> Expr[T | V]:
-        if not self.err or not isinstance(self.value, exception):
-            return self
+    def map_err[V](self, fn: Callable[[Exception], V]) -> Expr[V]:
+        if not self._is_err:
+            return Expr(val=cast(V, self.inner))
 
-        return Expr(fn(self.value))
+        try:
+            return Expr(val=fn(cast(Exception, self.inner)))
+        except Exception as e:
+            return Expr(err=e)
+
+    def match[V](self) -> _Match[T, V]:
+        from fnutil.match import _Match
+
+        if self._is_err:
+            raise cast(Exception, self.inner)
+        return _Match(cast(T, self.inner))
+
+    def if_[V](self) -> _If[V]:
+        from fnutil.if_ import _If
+
+        if self._is_err:
+            raise cast(Exception, self.inner)
+
+        condition = bool(cast(T, self.inner))
+        return _If(condition)
+
+    @classmethod
+    def _wrap(cls, val: T | Exception):
+        if isinstance(val, Exception):
+            return cls(err=val)
+        return cls(val=val)
 
 
 def expr[T](value: T, /) -> Expr[T]:
-    return Expr(value)
+    return Expr(val=value)

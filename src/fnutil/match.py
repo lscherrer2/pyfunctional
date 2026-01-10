@@ -1,90 +1,105 @@
 from __future__ import annotations
-from typing import Callable, Any
-from typeguard import check_type, TypeCheckError
-from types import FunctionType
+
+from types import FunctionType, UnionType
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Union,
+    cast,
+    get_origin,
+)
+
+from typeguard import check_type
+
+from fnutil.base import _ExprChainable
 
 
-def match_value[T, V](value: T) -> MatchValue[T, V]:
-    return MatchValue(value)
+if TYPE_CHECKING:
+    from fnutil import Expr
 
 
-def match_type[T, V](value: T) -> MatchType[T, V]:
-    return MatchType(value)
+class MatchError(Exception):
+    pass
 
 
-class MatchValue[T, V]:
-    def __init__(self, value: T, /):
-        self.value: T = value
-        self.cases: list[tuple[T, Callable[[T], V] | V]] = []
-        self.default_case: Callable[[T], V] | V | None = None
+class _Case[T, V]:
+    def __init__(
+        self, cmp: Any, fn_or_val: V | Callable[[T], V], call: bool = False
+    ):
+        self.cmp = cmp
+        self.fn_or_val = fn_or_val
+        self.call = call
 
-    def case(self, value: T, fn_or_value: Callable[[T], V] | V, /) -> MatchValue[T, V]:
-        self.cases.append((value, fn_or_value))
-        return self
+    def match(self, other: T) -> bool:
+        is_type = isinstance(self.cmp, type)
+        is_union = (
+            isinstance(self.cmp, UnionType) or get_origin(self.cmp) is Union
+        )
 
-    def default(self, fn_or_value: Callable[[T], V] | V, /) -> MatchValue[T, V]:
-        if self.default_case is not None:
-            raise RuntimeError("Received multiple defaults")
+        if is_type or is_union:
+            try:
+                check_type(other, self.cmp)
+                return True
+            except Exception:
+                return False
 
-        self.default_case = fn_or_value
-        return self
+        return self.cmp is other or self.cmp == other
 
-    def evaluate(self) -> V:
-        for value, fn_or_value in self.cases:
-            if self.value == value:
-                if isinstance(fn_or_value, FunctionType):
-                    return fn_or_value(self.value)
-
-                return fn_or_value
-
-        if fn_or_value := self.default_case:
-            if isinstance(fn_or_value, FunctionType):
-                return fn_or_value(self.value)
-
-            return fn_or_value
-
-        raise ValueError("No Matching Arm")
-
-
-def _is_type(value: Any, annotation: type):
-    try:
-        check_type(value, annotation)
-        return True
-    except TypeCheckError:
-        return False
+    def evaluate(self, val: T) -> V:
+        if isinstance(self.fn_or_val, FunctionType):
+            fn = cast(Callable[[T], V], self.fn_or_val)
+            return fn(val)
+        if self.call and callable(self.fn_or_val):
+            fn = cast(Callable[[T], V], self.fn_or_val)
+            return fn(val)
+        return cast(V, self.fn_or_val)
 
 
-class MatchType[T, V]:
-    def __init__(self, value: T):
-        self.value: T = value
-        self.cases: list[tuple[type, Callable[[T], V] | V]] = []
-        self.default_case: Callable[[T], V] | V | None = None
+class _Match[T, V](_ExprChainable):
+    def __init__(self, val: T):
+        super().__init__()
+
+        self.val: T = val
+        self.cases: list[_Case[T, V]] = []
+        self._default: tuple[V | Callable[[T], V], bool] | None = None
 
     def case(
-        self, annotation: type, fn_or_value: Callable[[T], V] | V, /
-    ) -> MatchType[T, V]:
-        self.cases.append((annotation, fn_or_value))
+        self, cmp: Any, fn_or_val: V | Callable[[T], V], *, call: bool = False
+    ) -> _Match[T, V]:
+        self.cases.append(_Case(cmp=cmp, fn_or_val=fn_or_val, call=call))
         return self
 
-    def default(self, fn_or_value: Callable[[T], V] | V, /) -> MatchType[T, V]:
-        if self.default_case is not None:
-            raise RuntimeError("Received multiple defaults")
-
-        self.default_case = fn_or_value
+    def default(
+        self, v: V | Callable[[T], V], *, call: bool = False
+    ) -> _Match[T, V]:
+        if self._default is not None:
+            raise RuntimeError("Default case already defined")
+        self._default = (v, call)
         return self
 
-    def evaluate(self) -> V:
-        for annotation, fn_or_value in self.cases:
-            if _is_type(self.value, annotation):
-                if isinstance(fn_or_value, FunctionType):
-                    return fn_or_value(self.value)
+    def evaluate(self) -> Expr[V]:
+        for case in self.cases:
+            if case.match(self.val):
+                try:
+                    result = case.evaluate(self.val)
+                    return self._make_expr(val=result)
+                except Exception as e:
+                    return self._make_expr(err=e)
 
-                return fn_or_value
+        if self._default is None:
+            msg = f"No case matched value {self.val} and no default provided"
+            raise ValueError(msg)
 
-        if fn_or_value := self.default_case:
-            if isinstance(fn_or_value, FunctionType):
-                return fn_or_value(self.value)
+        default_val, call = self._default
 
-            return fn_or_value
-
-        raise ValueError("No Matching Arm")
+        try:
+            if isinstance(default_val, FunctionType):
+                fn = cast(Callable[[T], V], default_val)
+                return self._make_expr(val=fn(self.val))
+            if call and callable(default_val):
+                fn = cast(Callable[[T], V], default_val)
+                return self._make_expr(val=fn(self.val))
+            return self._make_expr(val=cast(V, default_val))
+        except Exception as e:
+            return self._make_expr(err=e)
