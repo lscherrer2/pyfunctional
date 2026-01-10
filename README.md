@@ -165,12 +165,12 @@ assert result.val == "success"
 ```py
 result = (
     fn.expr([1, 2, 3, 4])
-    .map(lambda xs: fn.iterate(xs))
-    .map(lambda it: it.filter(lambda x: x % 2 == 0))
-    .map(lambda it: list(it))
+    .iter()
+    .filter(lambda x: x % 2 == 0)
+    .collect(list)
 )
 
-assert result.val == [2, 4]
+assert result == [2, 4]
 ```
 
 Common methods: `map`, `filter`, `filterfalse`, `collect`, `chain`, `zip`, `enumerate`, 
